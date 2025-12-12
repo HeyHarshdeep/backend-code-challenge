@@ -1,4 +1,4 @@
-using CodeChallenge.Api.Logic;
+﻿using CodeChallenge.Api.Logic;
 using CodeChallenge.Api.Models;
 using CodeChallenge.Api.Repositories;
 using Microsoft.AspNetCore.Mvc;
@@ -41,18 +41,23 @@ public class MessagesController : ControllerBase
     {
         var result = await _messageLogic.CreateMessageAsync(organizationId, request);
 
-        return result switch
+
+        if (result is Created<Message> created)
         {
-            Created<Message> created =>
-                CreatedAtAction(nameof(GetById),
-                    new { organizationId, id = created.Value.Id },
-                    created.Value),
+            return CreatedAtAction(
+                nameof(GetById),
+                new { organizationId, id = created.Value.Id },
+                created.Value
+            );
+        }
 
-            ValidationError ve => BadRequest(ve.Errors),
-            Conflict c => Conflict(c.Message),
+        if (result is ValidationError ve)
+            return BadRequest(ve.Errors);
 
-            _ => StatusCode(500)
-        };
+        if (result is Conflict c)
+            return Conflict(c.Message);
+
+        return StatusCode(500);
     }
 
 
@@ -62,30 +67,37 @@ public class MessagesController : ControllerBase
     {
         var result = await _messageLogic.UpdateMessageAsync(organizationId, id, request);
 
-        return result switch
-        {
-            Updated => NoContent(),
-            NotFound nf => NotFound(nf.Message),
-            Conflict c => Conflict(c.Message),
-            ValidationError ve => BadRequest(ve.Errors),
-            _ => StatusCode(500)
-        };
+        if (result is Updated)
+            return NoContent();
+
+        if (result is NotFound nf)
+            return NotFound(nf.Message);
+
+        if (result is Conflict c)
+            return Conflict(c.Message);
+
+        if (result is ValidationError ve)
+            return BadRequest(ve.Errors);
+
+        return StatusCode(500);
     }
 
 
+    // DELETE an existing message
     [HttpDelete("{id}")]
     public async Task<ActionResult> Delete(Guid organizationId, Guid id)
     {
         var result = await _messageLogic.DeleteMessageAsync(organizationId, id);
 
-        return result switch
-        {
-            Deleted => NoContent(),
-            NotFound nf => NotFound(nf.Message),
-            ValidationError ve => BadRequest(ve.Errors),
-            _ => StatusCode(500)
-        };
+        if (result is Deleted)
+            return NoContent();
+
+        if (result is NotFound nf)
+            return NotFound(nf.Message);
+
+        if (result is ValidationError ve)
+            return BadRequest(ve.Errors);
+
+        return StatusCode(500);
     }
-
-
 }
